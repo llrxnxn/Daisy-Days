@@ -61,11 +61,10 @@ export default function Login() {
       // API call to backend
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+
 
       const data = await response.json();
 
@@ -79,7 +78,7 @@ export default function Login() {
         
         // Redirect based on user role
         if (data.user.role === 'admin') {
-          navigate('/Admin/dashboard');
+          navigate('/AdminDashboard');
         } else {
           navigate('/');
         }

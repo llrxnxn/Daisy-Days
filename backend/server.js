@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       register: 'POST /api/auth/register',
-      login: 'POST /api/auth/Login',
+      login: 'POST /api/auth/login',
       getUser: 'GET /api/auth/me'
     }
   });
