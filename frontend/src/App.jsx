@@ -6,6 +6,7 @@ import Shop from './pages/user/shop';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/user/profile';
+import Cart from './pages/user/cart';
 import ViewProduct from './pages/user/viewProduct';
 import Products from './pages/admin/Products';
 import UpdateProduct from './pages/admin/updateProduct';
@@ -27,6 +28,8 @@ function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/products/edit/:id" element={<UpdateProduct />} />
           <Route path="/product/:id" element={<ViewProduct />} />
+          <Route path="/cart" element={<Cart />} />
+
         </Routes>
       </div>
     </Router>
