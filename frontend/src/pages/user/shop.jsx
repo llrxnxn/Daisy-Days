@@ -1,8 +1,10 @@
+// frontend/src/pages/user/shop.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Filter, X, Package, Heart, ShoppingCart, ChevronDown, Star } from 'lucide-react';
 import Navbar from '../../components/layout/navbar';
 import Footer from '../../components/layout/footer';
+import ViewProduct from './viewProduct';
 import api from '../../api/axios';
 
 export default function Shop() {
@@ -22,6 +24,10 @@ export default function Shop() {
   const [showFilters, setShowFilters] = useState(false);
   const [wishlist, setWishlist] = useState([]);
   const [cart, setCart] = useState([]);
+
+  // Modal state - ITO ANG KULANG!
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
 
   const categories = ['Birthday', 'Anniversary', 'Romance', 'Holiday', 'Get Well'];
   const ratingOptions = [
@@ -55,7 +61,6 @@ export default function Shop() {
       const response = await api.get('/products');
       setProducts(response.data);
       
-      // Calculate max price from products
       if (response.data.length > 0) {
         const prices = response.data.map(p => p.price);
         const max = Math.max(...prices);
@@ -96,10 +101,23 @@ export default function Shop() {
     }
   };
 
+  // Function para buksan ang modal - ITO ANG FUNCTION NA KULANG!
+  const openProductModal = (productId) => {
+    setSelectedProductId(productId);
+    setIsModalOpen(true);
+  };
+
+  // Function para isara ang modal
+  const closeProductModal = () => {
+    setIsModalOpen(false);
+    setSelectedProductId(null);
+    // Refresh user data after modal closes (in case wishlist/cart changed)
+    loadUserData();
+  };
+
   const filterAndSortProducts = () => {
     let filtered = [...products];
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -107,19 +125,16 @@ export default function Shop() {
       );
     }
 
-    // Filter by categories (multiple selection)
     if (selectedCategories.length > 0) {
       filtered = filtered.filter(product => 
         selectedCategories.includes(product.category)
       );
     }
 
-    // Filter by price range
     filtered = filtered.filter(product => 
       product.price >= priceRange[0] && product.price <= priceRange[1]
     );
 
-    // Filter by ratings (multiple selection)
     if (selectedRatings.length > 0) {
       const minRating = Math.min(...selectedRatings);
       filtered = filtered.filter(product => {
@@ -128,7 +143,6 @@ export default function Shop() {
       });
     }
 
-    // Sort products
     switch (sortBy) {
       case 'price-low':
         filtered.sort((a, b) => a.price - b.price);
@@ -244,16 +258,13 @@ export default function Shop() {
       <Navbar cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} wishlistCount={wishlist.length} />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Shop Flowers</h1>
           <p className="text-gray-600">Discover our beautiful collection of satin flowers</p>
         </div>
 
-        {/* Search & Sort Bar */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
@@ -265,7 +276,6 @@ export default function Shop() {
               />
             </div>
 
-            {/* Sort */}
             <div className="relative">
               <select
                 value={sortBy}
@@ -281,7 +291,6 @@ export default function Shop() {
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
             </div>
 
-            {/* Filter Toggle (Mobile) */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="md:hidden flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition relative"
@@ -296,7 +305,6 @@ export default function Shop() {
             </button>
           </div>
 
-          {/* Active Filters */}
           {(selectedCategories.length > 0 || searchQuery || selectedRatings.length > 0 || 
             priceRange[0] !== 0 || priceRange[1] !== maxPrice) && (
             <div className="flex flex-wrap gap-2 mt-4">
@@ -335,7 +343,6 @@ export default function Shop() {
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar Filters */}
           <aside className={`lg:block ${showFilters ? 'block' : 'hidden'} lg:col-span-1`}>
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-8 space-y-6">
               <div className="flex items-center justify-between">
@@ -356,7 +363,6 @@ export default function Shop() {
                 </button>
               </div>
 
-              {/* Category Filter */}
               <div className="border-t pt-6">
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <span>Category</span>
@@ -385,7 +391,6 @@ export default function Shop() {
                 </div>
               </div>
 
-              {/* Price Range Filter */}
               <div className="border-t pt-6">
                 <h4 className="font-semibold text-gray-900 mb-3">Price Range</h4>
                 <div className="space-y-4">
@@ -421,7 +426,6 @@ export default function Shop() {
                 </div>
               </div>
 
-              {/* Rating Filter */}
               <div className="border-t pt-6">
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <span>Customer Rating</span>
@@ -458,9 +462,7 @@ export default function Shop() {
             </div>
           </aside>
 
-          {/* Products Grid */}
           <main className="lg:col-span-3">
-            {/* Results Count */}
             <div className="mb-6 flex items-center justify-between">
               <p className="text-gray-600">
                 Showing <span className="font-semibold text-gray-900">{filteredProducts.length}</span> of{' '}
@@ -505,13 +507,12 @@ export default function Shop() {
                       className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition group"
                     >
                       <div className="relative">
-                        {/* Product Image */}
                         {product.images && product.images.length > 0 ? (
                           <img
                             src={product.images[0].url}
                             alt={product.name}
                             className="w-full h-64 object-cover cursor-pointer group-hover:scale-105 transition duration-300"
-                            onClick={() => navigate(`/product/${product._id}`)}
+                            onClick={() => openProductModal(product._id)}
                             onError={(e) => {
                               e.target.src = 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=400&h=400&fit=crop';
                             }}
@@ -522,7 +523,6 @@ export default function Shop() {
                           </div>
                         )}
 
-                        {/* Wishlist Button */}
                         <button
                           onClick={() => handleAddToWishlist(product._id)}
                           className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-pink-50 transition"
@@ -533,7 +533,6 @@ export default function Shop() {
                           />
                         </button>
 
-                        {/* Stock Badge */}
                         <span className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-semibold ${stockStatus.color}`}>
                           {stockStatus.text}
                         </span>
@@ -543,12 +542,11 @@ export default function Shop() {
                         <div className="text-sm text-pink-600 font-medium mb-1">{product.category}</div>
                         <h3
                           className="font-bold text-lg text-gray-900 mb-2 cursor-pointer hover:text-pink-600 transition line-clamp-1"
-                          onClick={() => navigate(`/product/${product._id}`)}
+                          onClick={() => openProductModal(product._id)}
                         >
                           {product.name}
                         </h3>
 
-                        {/* Rating Display */}
                         <div className="flex items-center gap-2 mb-3">
                           <div className="flex items-center">
                             {[...Array(5)].map((_, i) => (
@@ -600,6 +598,13 @@ export default function Shop() {
           </main>
         </div>
       </div>
+
+      {/* MODAL COMPONENT - ITO ANG KULANG SA ORIGINAL CODE! */}
+      <ViewProduct 
+        productId={selectedProductId}
+        isOpen={isModalOpen}
+        onClose={closeProductModal}
+      />
 
       <Footer />
     </div>

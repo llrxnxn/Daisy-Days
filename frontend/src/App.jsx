@@ -6,6 +6,7 @@ import Shop from './pages/user/shop';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/user/profile';
+import ViewProduct from './pages/user/viewProduct';
 import Products from './pages/admin/Products';
 import UpdateProduct from './pages/admin/updateProduct';
 import AdminDashboard from './pages/admin/AdminDashboard'; 
@@ -25,6 +26,7 @@ function App() {
           <Route path="/AdminDashboard" element={<AdminDashboard />} /> 
           <Route path="/products" element={<Products />} />
           <Route path="/products/edit/:id" element={<UpdateProduct />} />
+          <Route path="/product/:id" element={<ViewProduct />} />
         </Routes>
       </div>
     </Router>
