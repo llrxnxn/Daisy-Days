@@ -2,9 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/user');
 const { protect } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const { profileUpload } = require('../middleware/upload');
 const cloudinary = require('../config/cloudinary');
 
 // Generate JWT Token
@@ -178,7 +178,7 @@ router.get('/me', protect, async (req, res) => {
 // @route   PUT /api/auth/profile
 // @desc    Update user profile (with image upload)
 // @access  Private
-router.put('/profile', protect, upload.single('profileImage'), async (req, res) => {
+router.put('/profile', protect, profileUpload.single('profileImage'), async (req, res) => {
   try {
     const { firstName, lastName, phone } = req.body;
 

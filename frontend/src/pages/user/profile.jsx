@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, User, Mail, Phone, Save, X, Trash2, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/layout/navbar';
-import Footer from '../components/layout/footer';
+import Navbar from '../../components/layout/navbar';
+import Footer from '../../components/layout/footer';
 
 export default function Profile() {
   const navigate = useNavigate();
