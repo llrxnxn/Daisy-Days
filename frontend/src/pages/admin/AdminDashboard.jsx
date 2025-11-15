@@ -13,13 +13,69 @@ import {
   Eye,
   Edit,
   Trash2,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 import Navbar from '../../components/layout/navbar';
 import Footer from '../../components/layout/footer';
 import ViewProductModal from './viewProduct';
-import DeleteConfirmationModal from './deleteProduct'; // ✅ Import delete modal
 import api from '../../api/axios';
+
+// Bulk Delete Modal Component
+const BulkDeleteModal = ({ isOpen, onClose, onConfirm, selectedCount, isDeleting }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-100 p-3 rounded-full">
+              <Trash2 className="text-red-600" size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">Confirm Delete</h3>
+          </div>
+          {!isDeleting && (
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X size={24} />
+            </button>
+          )}
+        </div>
+        
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete <span className="font-bold text-red-600">{selectedCount}</span> {selectedCount === 1 ? 'product' : 'products'}? This action cannot be undone.
+        </p>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isDeleting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 size={18} />
+                Delete {selectedCount === 1 ? 'Product' : 'Products'}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -31,9 +87,8 @@ export default function AdminDashboard() {
   const [viewProductId, setViewProductId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // ✅ Delete Modal state
-  const [deleteProductId, setDeleteProductId] = useState(null);
-  const [deleteProductName, setDeleteProductName] = useState('');
+  // ✅ Bulk Delete state
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -77,10 +132,30 @@ export default function AdminDashboard() {
     }
   };
 
-  // ✅ Open delete confirmation modal
-  const handleDeleteClick = (product) => {
-    setDeleteProductId(product._id);
-    setDeleteProductName(product.name);
+  // ✅ Toggle individual product selection
+  const toggleProductSelection = (productId) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  // ✅ Toggle select all products
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === products.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(products.map(p => p._id));
+    }
+  };
+
+  // ✅ Open delete modal
+  const handleDeleteClick = () => {
+    if (selectedProducts.length === 0) {
+      alert("Please select at least one product to delete");
+      return;
+    }
     setIsDeleteModalOpen(true);
   };
 
@@ -88,30 +163,25 @@ export default function AdminDashboard() {
   const handleCloseDeleteModal = () => {
     if (!isDeleting) {
       setIsDeleteModalOpen(false);
-      setDeleteProductId(null);
-      setDeleteProductName('');
     }
   };
 
-  // ✅ Confirm delete
+  // ✅ Confirm bulk delete
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
     try {
-      await api.delete(`/products/${deleteProductId}`);
+      // Delete all selected products
+      await Promise.all(
+        selectedProducts.map(id => api.delete(`/products/${id}`))
+      );
       
-      // Success feedback
       setIsDeleteModalOpen(false);
-      setDeleteProductId(null);
-      setDeleteProductName('');
-      
-      // Show success message
-      alert("Product deleted successfully!");
-      
-      // Refresh data
+      alert(`${selectedProducts.length} product(s) deleted successfully!`);
+      setSelectedProducts([]);
       await fetchDashboardData();
     } catch (err) {
       console.error(err);
-      alert("Error deleting product: " + (err.response?.data?.message || err.message));
+      alert("Error deleting products: " + (err.response?.data?.message || err.message));
     } finally {
       setIsDeleting(false);
     }
@@ -164,12 +234,12 @@ export default function AdminDashboard() {
         onClose={handleCloseModal}
       />
 
-      {/* ✅ Delete Confirmation Modal */}
-      <DeleteConfirmationModal
+      {/* ✅ Bulk Delete Confirmation Modal */}
+      <BulkDeleteModal
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}
         onConfirm={handleConfirmDelete}
-        productName={deleteProductName}
+        selectedCount={selectedProducts.length}
         isDeleting={isDeleting}
       />
 
@@ -331,14 +401,32 @@ export default function AdminDashboard() {
             {activeTab === "products" && (
               <div className="bg-white p-8 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Products Management</h2>
-                  <button
-                    onClick={() => navigate('/Products')}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
-                  >
-                    <Plus size={20} />
-                    Add Product
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-bold text-gray-900">Products Management</h2>
+                    {selectedProducts.length > 0 && (
+                      <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-semibold">
+                        {selectedProducts.length} selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {selectedProducts.length > 0 && (
+                      <button
+                        onClick={handleDeleteClick}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Trash2 size={20} />
+                        Delete ({selectedProducts.length})
+                      </button>
+                    )}
+                    <button
+                      onClick={() => navigate('/Products')}
+                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                    >
+                      <Plus size={20} />
+                      Add Product
+                    </button>
+                  </div>
                 </div>
 
                 {products.length === 0 ? (
@@ -351,6 +439,14 @@ export default function AdminDashboard() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b">
+                          <th className="py-3 text-left w-12">
+                            <input
+                              type="checkbox"
+                              checked={selectedProducts.length === products.length && products.length > 0}
+                              onChange={toggleSelectAll}
+                              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                            />
+                          </th>
                           <th className="py-3 text-left">Image</th>
                           <th className="py-3 text-left">Name</th>
                           <th className="py-3 text-left">Price</th>
@@ -361,7 +457,20 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody>
                         {products.map((p) => (
-                          <tr key={p._id} className="border-b hover:bg-gray-50">
+                          <tr 
+                            key={p._id} 
+                            className={`border-b hover:bg-gray-50 transition ${
+                              selectedProducts.includes(p._id) ? 'bg-purple-50' : ''
+                            }`}
+                          >
+                            <td className="py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedProducts.includes(p._id)}
+                                onChange={() => toggleProductSelection(p._id)}
+                                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                              />
+                            </td>
                             <td className="py-4">
                               {p.images && p.images.length > 0 ? (
                                 <img 
@@ -397,14 +506,6 @@ export default function AdminDashboard() {
                                 title="Edit Product"
                               >
                                 <Edit size={18} />
-                              </button>
-                              {/* ✅ Updated delete button */}
-                              <button
-                                onClick={() => handleDeleteClick(p)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                                title="Delete Product"
-                              >
-                                <Trash2 size={18} />
                               </button>
                             </td>
                           </tr>
