@@ -6,7 +6,6 @@ import {
   Package,
   ShoppingBag,
   Users,
-  Settings,
   LogOut,
   TrendingUp,
   DollarSign,
@@ -252,12 +251,6 @@ export default function AdminDashboard() {
               <h1 className="text-3xl font-bold mb-2">Admin Dashboard 👑</h1>
               <p className="text-purple-100">Welcome back, {user?.firstName}!</p>
             </div>
-            <div className="hidden md:block text-right">
-              <div className="text-sm text-purple-100">Total Revenue</div>
-              <div className="text-4xl font-bold">
-                ₱{stats?.totalSales?.toLocaleString()}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -318,17 +311,6 @@ export default function AdminDashboard() {
                   }`}
                 >
                   <Users size={20} /> <span>Customers</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
-                    activeTab === 'settings'
-                      ? 'bg-purple-100 text-purple-600 font-semibold'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Settings size={20} /> <span>Settings</span>
                 </button>
 
                 <button
