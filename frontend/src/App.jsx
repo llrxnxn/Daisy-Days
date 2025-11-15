@@ -2,6 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import Shop from './pages/user/shop';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/user/profile';
@@ -20,6 +21,7 @@ function App() {
           <Route path="/Login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/shop" element={<Shop />} />
           <Route path="/AdminDashboard" element={<AdminDashboard />} /> 
           <Route path="/products" element={<Products />} />
           <Route path="/products/edit/:id" element={<UpdateProduct />} />
