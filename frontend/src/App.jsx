@@ -7,6 +7,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/user/profile';
 import Cart from './pages/user/cart';
+import Checkout from './pages/user/checkout';
+import Orders from './pages/user/orders';
+import TransactionHistory from './pages/user/transactionHistory';
 import Wishlist from './pages/user/wishlist';
 import ViewProduct from './pages/user/viewProduct';
 import Products from './pages/admin/Products';
@@ -33,7 +36,9 @@ function App() {
             <Route path="/products/edit/:id" element={<UpdateProduct />} />
             <Route path="/product/:id" element={<ViewProduct />} />
             <Route path="/cart" element={<Cart />} />
-
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/transactions" element={<TransactionHistory />} />
           </Routes>
         </div>
       </Router>

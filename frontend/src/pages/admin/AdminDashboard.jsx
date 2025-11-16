@@ -18,6 +18,7 @@ import {
 import Navbar from '../../components/layout/navbar';
 import Footer from '../../components/layout/footer';
 import ViewProductModal from './viewProduct';
+import ViewOrderModal from './viewOrder';
 import Overview from './Overview';
 import api from '../../api/axios';
 
@@ -87,6 +88,10 @@ export default function AdminDashboard() {
   const [viewProductId, setViewProductId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // ✅ View Order Modal state
+  const [viewOrderId, setViewOrderId] = useState(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
   // ✅ Bulk Delete state
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -137,12 +142,23 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      const token = localStorage.getItem('token');
       const productsRes = await api.get("/products");
       setProducts(productsRes.data);
 
+      // Fetch orders with authentication
+      const ordersRes = await api.get("/orders", {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      setOrders(ordersRes.data);
+
+      // Calculate total sales
+      const totalSales = ordersRes.data.reduce((sum, order) => sum + order.totalAmount, 0);
+
       setStats({
-        totalSales: 0,
-        orders: 0,
+        totalSales: totalSales,
+        orders: ordersRes.data.length,
         products: productsRes.data.length,
         customers: 0
       });
@@ -160,6 +176,46 @@ export default function AdminDashboard() {
         ? prev.filter(id => id !== productId)
         : [...prev, productId]
     );
+  };
+
+  // ✅ Get status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'shipped':
+        return 'bg-blue-100 text-blue-800';
+      case 'confirmed':
+        return 'bg-purple-100 text-purple-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // ✅ Update order status
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      await api.put(`/orders/${orderId}`, 
+        { status: newStatus },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      // Update local UI
+      setOrders(prev =>
+        prev.map(order => 
+          order._id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+      alert(`Order status updated to ${newStatus}`);
+    } catch (err) {
+      console.error("Update order status error:", err);
+      alert("Failed to update order status");
+    }
   };
 
   // ✅ Toggle user active/inactive status
@@ -256,22 +312,21 @@ export default function AdminDashboard() {
     setViewProductId(null);
   };
 
+  // ✅ Open order modal
+  const handleViewOrder = (orderId) => {
+    setViewOrderId(orderId);
+    setIsOrderModalOpen(true);
+  };
+
+  // ✅ Close order modal
+  const handleCloseOrderModal = () => {
+    setIsOrderModalOpen(false);
+    setViewOrderId(null);
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Delivered': return 'bg-green-100 text-green-800';
-      case 'Shipped': return 'bg-purple-100 text-purple-800';
-      case 'Processing': return 'bg-blue-100 text-blue-800';
-      case 'Pending': return 'bg-yellow-100 text-yellow-800';
-      case 'In Stock': return 'bg-green-100 text-green-800';
-      case 'Low Stock': return 'bg-yellow-100 text-yellow-800';
-      case 'Out of Stock': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const getStockStatus = (stock) => {
@@ -298,6 +353,12 @@ export default function AdminDashboard() {
         onConfirm={handleConfirmDelete}
         selectedCount={selectedProducts.length}
         isDeleting={isDeleting}
+      />
+
+      <ViewOrderModal
+        orderId={viewOrderId}
+        isOpen={isOrderModalOpen}
+        onClose={handleCloseOrderModal}
       />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -524,20 +585,44 @@ export default function AdminDashboard() {
                       <tr className="border-b">
                         <th className="py-3 text-left">Order ID</th>
                         <th className="py-3 text-left">Customer</th>
+                        <th className="py-3 text-left">Date</th>
                         <th className="py-3 text-left">Amount</th>
-                        <th className="py-3 text-left">Status</th>
+                        <th className="py-3 text-left">Order Status</th>
+                        <th className="py-3 text-left">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {orders.map((o) => (
                         <tr key={o._id} className="border-b hover:bg-gray-50">
-                          <td className="py-4">{o._id}</td>
-                          <td className="py-4">{o.customerName}</td>
-                          <td className="py-4">₱{o.amount}</td>
+                          <td className="py-4 text-sm font-mono">{o._id.slice(-8).toUpperCase()}</td>
                           <td className="py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(o.status)}`}>
-                              {o.status}
-                            </span>
+                            <div>
+                              <p className="font-medium">{o.shippingAddress.firstName} {o.shippingAddress.lastName}</p>
+                              <p className="text-sm text-gray-600">{o.shippingAddress.email}</p>
+                            </div>
+                          </td>
+                          <td className="py-4 text-sm">{new Date(o.createdAt).toLocaleDateString()}</td>
+                          <td className="py-4 font-semibold">₱{o.totalAmount.toLocaleString()}</td>
+                          <td className="py-4">
+                            <select
+                              value={o.status}
+                              onChange={(e) => updateOrderStatus(o._id, e.target.value)}
+                              className={`px-3 py-1 rounded-lg text-sm font-medium border-0 focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer ${getStatusColor(o.status)}`}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="confirmed">Confirmed</option>
+                              <option value="shipped">Shipped</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          </td>
+                          <td className="py-4">
+                            <button
+                              onClick={() => handleViewOrder(o._id)}
+                              className="text-pink-600 hover:text-pink-700 font-medium text-sm"
+                            >
+                              View
+                            </button>
                           </td>
                         </tr>
                       ))}

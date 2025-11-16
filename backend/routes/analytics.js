@@ -21,27 +21,32 @@ router.get('/monthly-sales', protect, isAdmin, async (req, res) => {
     let filter = {};
     
     if (startDate && endDate) {
-      filter.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      
+      filter.updatedAt = {
+        $gte: start,
+        $lte: end
       };
     } else {
       // Default: last 12 months
       const now = new Date();
       const lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-      filter.createdAt = {
+      filter.updatedAt = {
         $gte: lastYear,
         $lte: now
       };
     }
 
+    // Count only delivered orders for actual sales (using updatedAt for when they were delivered)
     const sales = await Order.aggregate([
-      { $match: { ...filter, status: { $ne: 'cancelled' } } },
+      { $match: { ...filter, status: 'delivered' } },
       {
         $group: {
           _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' }
+            year: { $year: '$updatedAt' },
+            month: { $month: '$updatedAt' }
           },
           totalSales: { $sum: '$totalAmount' },
           orderCount: { $sum: 1 }
@@ -113,9 +118,14 @@ router.get('/orders-stats', protect, isAdmin, async (req, res) => {
     let filter = {};
     
     if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      // Ensure end date includes the entire day
+      end.setHours(23, 59, 59, 999);
+      
       filter.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $gte: start,
+        $lte: end
       };
     } else {
       // Default: last 12 months
@@ -145,7 +155,8 @@ router.get('/orders-stats', protect, isAdmin, async (req, res) => {
           _id: '$status',
           count: { $sum: 1 }
         }
-      }
+      },
+      { $sort: { count: -1 } }
     ]);
 
     res.json({

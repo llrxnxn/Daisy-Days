@@ -147,16 +147,28 @@ export default function Navbar({ cartCount = 0, wishlistCount = 0 }) {
 
                     {/* My Profile (Customer Only) */}
                     {user?.role !== "admin" && (
-                      <button
-                        onClick={() => {
-                          navigate("/profile");
-                          setShowProfileMenu(false);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-pink-50 text-gray-700 flex items-center space-x-2"
-                      >
-                        <User size={16} />
-                        <span>My Profile</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            navigate("/profile");
+                            setShowProfileMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-pink-50 text-gray-700 flex items-center space-x-2"
+                        >
+                          <User size={16} />
+                          <span>My Profile</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            navigate("/transactions");
+                            setShowProfileMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-pink-50 text-gray-700 flex items-center space-x-2"
+                        >
+                          <ShoppingCart size={16} />
+                          <span>Transaction History</span>
+                        </button>
+                      </>
                     )}
 
                     <button

@@ -3,7 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { Calendar, TrendingUp, Users, Package } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Package, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
@@ -15,31 +15,33 @@ export default function Overview() {
   const [productsCategoryData, setProductsCategoryData] = useState([]);
   const [ordersStats, setOrdersStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   // Date Range Filter States
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
-    date.setFullYear(date.getFullYear() - 1);
+    date.setDate(date.getDate() - 30); // Last 30 days instead of 1 year
     return date.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Fetch All Dashboard Data
   const fetchDashboardData = async () => {
-    setLoading(true);
+    setRefreshing(true);
     setError(null);
     try {
+      const token = localStorage.getItem('token');
       const params = {
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString()
       };
 
       const [monthlySales, activeUsers, productsCategory, orders] = await Promise.all([
-        api.get('/analytics/monthly-sales', { params }),
-        api.get('/analytics/active-users'),
-        api.get('/analytics/products-by-category'),
-        api.get('/analytics/orders-stats', { params })
+        api.get('/analytics/monthly-sales', { params, headers: { 'Authorization': `Bearer ${token}` } }),
+        api.get('/analytics/active-users', { headers: { 'Authorization': `Bearer ${token}` } }),
+        api.get('/analytics/products-by-category', { headers: { 'Authorization': `Bearer ${token}` } }),
+        api.get('/analytics/orders-stats', { params, headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       setMonthlySalesData(monthlySales.data);
@@ -50,6 +52,7 @@ export default function Overview() {
       console.error('Error fetching dashboard data:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data');
     } finally {
+      setRefreshing(false);
       setLoading(false);
     }
   };
@@ -95,9 +98,22 @@ export default function Overview() {
           />
           <button
             onClick={fetchDashboardData}
-            className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition"
+            disabled={refreshing}
+            className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Apply Filter
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <button
+            onClick={() => {
+              const date = new Date();
+              date.setFullYear(date.getFullYear() - 5);
+              setStartDate(date.toISOString().split('T')[0]);
+              setEndDate(new Date().toISOString().split('T')[0]);
+            }}
+            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm"
+          >
+            All Time
           </button>
         </div>
       </div>
@@ -110,7 +126,7 @@ export default function Overview() {
             <div>
               <p className="text-gray-600 text-sm font-medium">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                ${ordersStats?.totalRevenue?.toFixed(2) || '0.00'}
+                ₱{ordersStats?.totalRevenue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
               </p>
             </div>
             <TrendingUp className="text-pink-600" size={32} />
