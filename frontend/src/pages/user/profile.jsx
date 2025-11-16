@@ -1,28 +1,50 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, User, Mail, Phone, Save, X, Trash2, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
 import Navbar from '../../components/layout/navbar';
 import Footer from '../../components/layout/footer';
+
+// Yup Validation Schema
+const profileSchema = yup.object({
+  firstName: yup
+    .string()
+    .min(2, 'First name must be at least 2 characters')
+    .required('First name is required'),
+  lastName: yup
+    .string()
+    .min(2, 'Last name must be at least 2 characters')
+    .required('Last name is required'),
+  phone: yup
+    .string()
+    .matches(/^[0-9]{10,11}$/, 'Phone number must be 10-11 digits')
+    .required('Phone number is required')
+});
 
 export default function Profile() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // Get user and token from localStorage
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    phone: ''
-  });
-
   const [selectedImage, setSelectedImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [generalError, setGeneralError] = useState('');
+  const [imageError, setImageError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset
+  } = useForm({
+    resolver: yupResolver(profileSchema),
+    mode: 'onChange'
+  });
 
   // Load user data from localStorage on mount
   useEffect(() => {
@@ -39,7 +61,7 @@ export default function Profile() {
     setUser(parsedUser);
 
     // Set form data
-    setFormData({
+    reset({
       firstName: parsedUser.firstName || '',
       lastName: parsedUser.lastName || '',
       phone: parsedUser.phone || ''
@@ -47,7 +69,7 @@ export default function Profile() {
 
     // Set profile image preview
     setPreviewUrl(parsedUser.profileImage || null);
-  }, [navigate]);
+  }, [navigate, reset]);
 
   // Update user in localStorage
   const updateUser = (updatedData) => {
@@ -56,46 +78,31 @@ export default function Profile() {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        setErrors({ image: 'Image size must be less than 5MB' });
+        setImageError('Image size must be less than 5MB');
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setErrors({ image: 'Please select an image file' });
+        setImageError('Please select an image file');
         return;
       }
 
       setSelectedImage(file);
-      
+
       // Create preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
       };
       reader.readAsDataURL(file);
-      
-      setErrors({ image: '' });
+
+      setImageError('');
     }
   };
 
@@ -129,59 +136,32 @@ export default function Profile() {
         setSuccessMessage('Profile picture removed successfully!');
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
-        setErrors({ general: data.message || 'Failed to remove image' });
+        setGeneralError(data.message || 'Failed to remove image');
       }
     } catch (error) {
       console.error('Remove image error:', error);
-      setErrors({ general: 'Network error. Please try again.' });
+      setGeneralError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/[- ]/g, ''))) {
-      newErrors.phone = 'Phone number is invalid';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data) => {
     setIsLoading(true);
-    setErrors({});
+    setGeneralError('');
     setSuccessMessage('');
 
     try {
       console.log('Starting profile update...');
       console.log('Token:', token ? 'Token exists' : 'No token');
-      console.log('Form data:', formData);
+      console.log('Form data:', data);
       console.log('Selected image:', selectedImage ? 'Image selected' : 'No image');
 
       // Create FormData for multipart upload
       const formDataToSend = new FormData();
-      formDataToSend.append('firstName', formData.firstName);
-      formDataToSend.append('lastName', formData.lastName);
-      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('firstName', data.firstName);
+      formDataToSend.append('lastName', data.lastName);
+      formDataToSend.append('phone', data.phone);
 
       if (selectedImage) {
         formDataToSend.append('profileImage', selectedImage);
@@ -201,30 +181,44 @@ export default function Profile() {
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
 
-      const data = await response.json();
-      console.log('Response data:', data);
+      const result = await response.json();
+      console.log('Response data:', result);
 
       if (response.ok) {
         // Update user in localStorage
-        updateUser(data.user);
+        updateUser(result.user);
         setSuccessMessage('Profile updated successfully! 🎉');
         setSelectedImage(null);
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
-        setErrors({ general: data.message || 'Failed to update profile' });
+        setGeneralError(result.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Update profile error:', error);
       if (error.message === 'Failed to fetch') {
-        setErrors({ general: 'Cannot connect to server. Please make sure the backend is running on http://localhost:5000' });
+        setGeneralError(
+          'Cannot connect to server. Please make sure the backend is running on http://localhost:5000'
+        );
       } else {
-        setErrors({ general: 'Network error. Please try again.' });
+        setGeneralError('Network error. Please try again.');
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    if (user) {
+      reset({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phone || ''
+      });
+    }
+    setSelectedImage(null);
+    setPreviewUrl(user?.profileImage || null);
   };
 
   const getUserInitials = () => {
@@ -248,8 +242,8 @@ export default function Profile() {
 
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Back Button */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center gap-2 text-gray-600 hover:text-pink-600 transition mb-6"
         >
           <ArrowLeft size={20} />
@@ -270,9 +264,9 @@ export default function Profile() {
         )}
 
         {/* General Error Message */}
-        {errors.general && (
+        {generalError && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
-            {errors.general}
+            {generalError}
           </div>
         )}
 
@@ -281,7 +275,7 @@ export default function Profile() {
           <div className="md:col-span-1">
             <div className="bg-white rounded-3xl shadow-lg p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Profile Picture</h2>
-              
+
               <div className="flex flex-col items-center">
                 {/* Profile Image Preview */}
                 <div className="relative mb-4">
@@ -312,9 +306,7 @@ export default function Profile() {
                   )}
                 </div>
 
-                {errors.image && (
-                  <p className="text-red-500 text-sm mb-2">{errors.image}</p>
-                )}
+                {imageError && <p className="text-red-500 text-sm mb-2">{imageError}</p>}
 
                 {/* Upload Button */}
                 <input
@@ -324,8 +316,9 @@ export default function Profile() {
                   accept="image/*"
                   className="hidden"
                 />
-                
+
                 <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading}
                   className="flex items-center gap-2 bg-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-pink-700 transition disabled:opacity-50"
@@ -371,12 +364,12 @@ export default function Profile() {
             <div className="bg-white rounded-3xl shadow-lg p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Personal Information</h2>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 {/* First Name & Last Name */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-gray-700 font-semibold mb-2">
-                      First Name
+                      First Name *
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -384,36 +377,32 @@ export default function Profile() {
                       </div>
                       <input
                         type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleChange}
+                        placeholder="John"
+                        {...register('firstName')}
                         className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                           errors.firstName ? 'border-red-500' : 'border-gray-200'
                         }`}
-                        placeholder="John"
                       />
                     </div>
                     {errors.firstName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+                      <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-gray-700 font-semibold mb-2">
-                      Last Name
+                      Last Name *
                     </label>
                     <input
                       type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
+                      placeholder="Doe"
+                      {...register('lastName')}
                       className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                         errors.lastName ? 'border-red-500' : 'border-gray-200'
                       }`}
-                      placeholder="Doe"
                     />
                     {errors.lastName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
+                      <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
                     )}
                   </div>
                 </div>
@@ -440,7 +429,7 @@ export default function Profile() {
                 {/* Phone */}
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">
-                    Phone Number
+                    Phone Number *
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -448,17 +437,15 @@ export default function Profile() {
                     </div>
                     <input
                       type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
+                      placeholder="09123456789"
+                      {...register('phone')}
                       className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                         errors.phone ? 'border-red-500' : 'border-gray-200'
                       }`}
-                      placeholder="09123456789"
                     />
                   </div>
                   {errors.phone && (
-                    <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                    <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
                   )}
                 </div>
 
@@ -472,19 +459,10 @@ export default function Profile() {
                     <Save size={20} />
                     {isLoading ? 'Saving...' : 'Save Changes'}
                   </button>
-                  
+
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData({
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        phone: user.phone
-                      });
-                      setSelectedImage(null);
-                      setPreviewUrl(user.profileImage);
-                      setErrors({});
-                    }}
+                    onClick={handleCancel}
                     disabled={isLoading}
                     className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition disabled:opacity-50"
                   >

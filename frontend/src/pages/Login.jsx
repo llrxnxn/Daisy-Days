@@ -1,94 +1,71 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+
+// Yup Validation Schema
+const loginSchema = yup.object({
+  email: yup
+    .string()
+    .email('Email is invalid')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required')
+});
 
 export default function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [errors, setErrors] = useState({});
+  const [generalError, setGeneralError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset
+  } = useForm({
+    resolver: yupResolver(loginSchema),
+    mode: 'onChange'
+  });
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data) => {
+    setGeneralError('');
     setIsLoading(true);
 
     try {
-      // API call to backend
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
 
-
-      const data = await response.json();
+      const result = await response.json();
 
       if (response.ok) {
         // Save token to localStorage
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+
         // Success message
         alert('Login successful! 🌸');
-        
+
         // Redirect based on user role
-        if (data.user.role === 'admin') {
+        if (result.user.role === 'admin') {
           navigate('/AdminDashboard');
         } else {
           navigate('/');
         }
       } else {
-        // Show error message
-        setErrors({ general: data.message || 'Login failed' });
+        setGeneralError(result.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({ general: 'Network error. Please try again.' });
+      setGeneralError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -97,8 +74,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-pink-50 flex items-center justify-center p-4">
       {/* Back to Home Button */}
-      <Link 
-        to="/" 
+      <Link
+        to="/"
         className="absolute top-8 left-8 flex items-center gap-2 text-gray-600 hover:text-pink-600 transition"
       >
         <ArrowLeft size={20} />
@@ -118,11 +95,11 @@ export default function Login() {
 
         {/* Login Card */}
         <div className="bg-white rounded-3xl shadow-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* General Error Message */}
-            {errors.general && (
+            {generalError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {errors.general}
+                {generalError}
               </div>
             )}
 
@@ -137,17 +114,15 @@ export default function Login() {
                 </div>
                 <input
                   type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
+                  placeholder="you@example.com"
+                  {...register('email')}
                   className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                     errors.email ? 'border-red-500' : 'border-gray-200'
                   }`}
-                  placeholder="you@example.com"
                 />
               </div>
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
               )}
             </div>
 
@@ -162,13 +137,11 @@ export default function Login() {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  {...register('password')}
                   className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                     errors.password ? 'border-red-500' : 'border-gray-200'
                   }`}
-                  placeholder="Enter your password"
                 />
                 <button
                   type="button"
@@ -179,7 +152,7 @@ export default function Login() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
               )}
             </div>
 
@@ -243,7 +216,6 @@ export default function Login() {
             </div>
           </form>
         </div>
-
       </div>
     </div>
   );
