@@ -14,10 +14,52 @@ export default function TransactionHistory() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('recent');
+  const [reviewStatus, setReviewStatus] = useState({}); // FIXED: Added missing state
 
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      checkReviewStatus();
+    }
+  }, [orders]);
+
+  const checkReviewStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const deliveredOrders = orders.filter(o => o.status === 'delivered');
+      const statusMap = {};
+
+      for (const order of deliveredOrders) {
+        let hasReview = false;
+        for (const item of order.items) {
+          try {
+            const res = await api.get(`/reviews/check/${item.productId._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.data.hasReview) {
+              hasReview = true;
+              break; // Mark order as having at least one review
+            }
+          } catch (error) {
+            console.error(`Error checking review for product ${item.productId._id}:`, error);
+          }
+        }
+        if (hasReview) {
+          statusMap[order._id] = true;
+        }
+      }
+
+      setReviewStatus(statusMap);
+    } catch (error) {
+      console.error('Error checking review status:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -461,10 +503,23 @@ export default function TransactionHistory() {
                           Cancel Order
                         </button>
                       )}
-                      <button className="flex-1 min-w-40 py-3 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition font-semibold flex items-center justify-center gap-2">
-                        <Download size={18} />
-                        Receipt
-                      </button>
+                      {order.status === 'delivered' ? (
+                        <button
+                          onClick={() => navigate(`/review/${order._id}`)}
+                          className="flex-1 min-w-40 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 transition"
+                          title={reviewStatus[order._id] ? 'You can update your review' : 'Write a review for this order'}
+                        >
+                          {reviewStatus[order._id] ? '✏️ Update Review' : '⭐ Write a Review'}
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="flex-1 min-w-40 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 bg-gray-200 text-gray-500 cursor-not-allowed"
+                          title="You can only review delivered orders"
+                        >
+                          ⭐ Write a Review
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

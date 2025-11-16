@@ -16,6 +16,7 @@ import Products from './pages/admin/Products';
 import UpdateProduct from './pages/admin/updateProduct';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { WishlistProvider } from './context/WishlistContext';
+import ReviewPage from "./pages/user/ReviewPage"; // make sure this import exists
 
 import './index.css';
 
@@ -35,6 +36,7 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/products/edit/:id" element={<UpdateProduct />} />
             <Route path="/product/:id" element={<ViewProduct />} />
+            <Route path="/review/:id" element={<ReviewPage />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/orders" element={<Orders />} />
