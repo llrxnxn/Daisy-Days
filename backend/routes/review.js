@@ -144,16 +144,13 @@ router.put('/:id', protect, async (req, res) => {
 });
 
 // 📌 Delete Review
-router.delete('/:id', protect, async (req, res) => {
+router.post('/bulk-delete', protect, async (req, res) => {
   try {
-    const review = await Review.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
-    if (!review) {
-      return res.status(404).json({ success: false, message: 'Review not found' });
-    }
-
-    res.json({ success: true, message: 'Review deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    const { reviewIds } = req.body;
+    await Review.deleteMany({ _id: { $in: reviewIds } });
+    res.json({ message: "Reviews deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to delete reviews" });
   }
 });
 
