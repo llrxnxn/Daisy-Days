@@ -5,11 +5,13 @@ import { Search, Filter, X, Package, Heart, ShoppingCart, ChevronDown, Star } fr
 import Navbar from '../../components/layout/navbar';
 import Footer from '../../components/layout/footer';
 import ViewProduct from './viewProduct';
+import { useWishlist } from '../../context/WishlistContext';
 import api from '../../api/axios';
 
 export default function Shop() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { wishlist, isInWishlist, addToWishlist, removeFromWishlistByProductId } = useWishlist();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +24,6 @@ export default function Shop() {
   const [maxPrice, setMaxPrice] = useState(10000);
   const [selectedRatings, setSelectedRatings] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [wishlist, setWishlist] = useState([]);
   const [cart, setCart] = useState([]);
 
   // Modal state - ITO ANG KULANG!
@@ -78,15 +79,6 @@ export default function Shop() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
-      try {
-        const wishlistRes = await api.get('/wishlist', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setWishlist(wishlistRes.data.map(item => item.productId || item._id));
-      } catch (err) {
-        console.log('Wishlist not available');
-      }
 
       try {
         const cartRes = await api.get('/cart', {
@@ -192,16 +184,12 @@ export default function Shop() {
         return;
       }
 
-      if (wishlist.includes(productId)) {
-        await api.delete(`/wishlist/${productId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setWishlist(wishlist.filter(id => id !== productId));
+      if (isInWishlist(productId)) {
+        // Remove from wishlist
+        await removeFromWishlistByProductId(productId);
       } else {
-        await api.post('/wishlist', { productId }, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setWishlist([...wishlist, productId]);
+        // Add to wishlist
+        await addToWishlist(productId);
       }
     } catch (error) {
       console.error('Error updating wishlist:', error);
@@ -498,7 +486,7 @@ export default function Shop() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map((product) => {
                   const stockStatus = getStockStatus(product.stock);
-                  const isInWishlist = wishlist.includes(product._id);
+                  const isProductInWishlist = isInWishlist(product._id);
                   const rating = product.rating || 0;
 
                   return (
@@ -529,7 +517,7 @@ export default function Shop() {
                         >
                           <Heart
                             size={20}
-                            className={isInWishlist ? 'text-pink-600 fill-pink-600' : 'text-gray-600'}
+                            className={isProductInWishlist ? 'text-pink-600 fill-pink-600' : 'text-gray-600'}
                           />
                         </button>
 
