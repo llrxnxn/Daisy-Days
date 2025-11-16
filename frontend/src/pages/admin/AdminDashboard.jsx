@@ -110,8 +110,29 @@ export default function AdminDashboard() {
   const [customers, setCustomers] = useState([]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const fetchAllData = async () => {
+    try {
+      await fetchDashboardData();
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to load dashboard:", err);
+    }
+  };
+  fetchAllData();
+}, []);
+
+  
+  const fetchUsers = async () => {
+  try {
+    const res = await api.get("/users");
+    setCustomers(res.data);
+
+    // update customer stats
+    setStats(prev => ({ ...prev, customers: res.data.length }));
+  } catch (err) {
+    console.log("Fetch users error:", err);
+  }
+};
 
   const fetchDashboardData = async () => {
     try {
@@ -139,6 +160,42 @@ export default function AdminDashboard() {
         : [...prev, productId]
     );
   };
+
+  // ✅ Toggle user active/inactive status
+  const toggleUserStatus = async (c) => {
+  try {
+    const updated = { isActive: !c.isActive };
+
+    await api.put(`/users/${c._id}`, updated);
+
+    // update local UI without reloading everything
+    setCustomers(prev =>
+      prev.map(u => u._id === c._id ? { ...u, ...updated } : u)
+    );
+    
+    alert(updated.isActive ? "User account activated" : "User account deactivated. They won't be able to login until reactivated.");
+  } catch (err) {
+    console.error("Update status error:", err);
+    alert("Failed to update user status");
+  }
+};
+
+  // ✅ Update user role
+  const updateUserRole = async (userId, newRole) => {
+  try {
+    await api.put(`/users/${userId}`, { role: newRole });
+
+    // update local UI without reloading everything
+    setCustomers(prev =>
+      prev.map(u => u._id === userId ? { ...u, role: newRole } : u)
+    );
+    
+    alert(`User role updated to ${newRole}`);
+  } catch (err) {
+    console.error("Update role error:", err);
+    alert("Failed to update user role");
+  }
+};
 
   // ✅ Toggle select all products
   const toggleSelectAll = () => {
@@ -552,18 +609,48 @@ export default function AdminDashboard() {
                       <tr className="border-b">
                         <th className="py-3 text-left">Name</th>
                         <th className="py-3 text-left">Email</th>
-                        <th className="py-3 text-left">Orders</th>
+                        <th className="py-3 text-left">Role</th>
+                        <th className="py-3 text-left">Status</th>
+                        <th className="py-3 text-left">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {customers.map((c) => (
-                        <tr key={c._id} className="border-b hover:bg-gray-50">
-                          <td className="py-4">{c.firstName} {c.lastName}</td>
-                          <td className="py-4">{c.email}</td>
-                          <td className="py-4">{c.orderCount}</td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    {customers.map((c) => (
+                      <tr key={c._id} className="border-b hover:bg-gray-50">
+                        <td className="py-4">{c.firstName} {c.lastName}</td>
+                        <td className="py-4">{c.email}</td>
+                        <td className="py-4">
+                          <select
+                            value={c.role}
+                            onChange={(e) => updateUserRole(c._id, e.target.value)}
+                            className="px-3 py-1 border border-gray-300 rounded-lg text-sm capitalize focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="customer">Customer</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </td>
+                        <td className="py-4">
+                          <span className={`px-3 py-1 text-xs rounded-full font-semibold ${
+                            c.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          }`}>
+                            {c.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-4 flex gap-2">
+                          <button
+                            onClick={() => toggleUserStatus(c)}
+                            className={`px-4 py-2 text-white rounded-lg font-medium transition ${
+                              c.isActive 
+                                ? "bg-red-600 hover:bg-red-700" 
+                                : "bg-green-600 hover:bg-green-700"
+                            }`}
+                          >
+                            {c.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                   </table>
                 )}
               </div>
