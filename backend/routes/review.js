@@ -4,6 +4,7 @@ const router = express.Router();
 const Review = require('../models/review');
 const Order = require('../models/order');
 const { protect } = require('../middleware/auth');
+const Product = require('../models/product'); 
 
 // Initialize bad-words filter
 let Filter;
@@ -71,6 +72,10 @@ router.post('/', protect, async (req, res) => {
       rating,
       comment: cleanedComment
     });
+
+    await Product.findByIdAndUpdate(productId, {
+  $push: { reviews: review._id }
+});
 
     res.status(201).json({ success: true, review, isUpdate: false });
   } catch (error) {

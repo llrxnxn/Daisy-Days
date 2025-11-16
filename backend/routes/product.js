@@ -34,11 +34,29 @@ router.post('/', productUpload.array('images', 5), async (req, res) => {
   }
 });
 
-// READ - Get All Products
+// READ - Get All Products (WITH RATINGS)
 router.get('/', async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
-    res.json(products);
+    const products = await Product.find()
+      .populate('reviews')  // ✅ Populate reviews
+      .sort({ createdAt: -1 });
+
+    // ✅ Compute rating for each product
+    const productsWithRatings = products.map(product => {
+      const reviewCount = product.reviews.length;
+      const rating =
+        reviewCount > 0
+          ? product.reviews.reduce((total, r) => total + r.rating, 0) / reviewCount
+          : 0;
+
+      return {
+        ...product.toObject(),
+        rating,
+        reviewCount
+      };
+    });
+
+    res.json(productsWithRatings);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching products', error: error.message });
   }
@@ -47,12 +65,33 @@ router.get('/', async (req, res) => {
 // READ - Get Single Product
 router.get('/:id', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate({
+        path: 'reviews',
+        populate: {
+          path: 'userId',
+          select: 'firstName lastName email'
+        }
+      });
+
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    res.json(product);
+
+    // Compute rating + review count
+    const reviewCount = product.reviews.length;
+    const rating =
+      reviewCount > 0
+        ? product.reviews.reduce((total, r) => total + r.rating, 0) / reviewCount
+        : 0;
+
+    res.json({
+      ...product.toObject(),
+      rating,
+      reviewCount
+    });
   } catch (error) {
+    console.error("Error fetching product:", error);
     res.status(500).json({ message: 'Error fetching product', error: error.message });
   }
 });
@@ -176,6 +215,13 @@ router.delete('/:id', async (req, res) => {
       error: error.message 
     });
   }
+});
+
+
+
+router.get('/debug/:id', async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  res.json(product);
 });
 
 module.exports = router;
