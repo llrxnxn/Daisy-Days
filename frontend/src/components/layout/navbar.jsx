@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   ShoppingCart,
-  Search,
   Menu,
   X,
   Heart,
@@ -80,13 +79,6 @@ export default function Navbar({ cartCount = 0, wishlistCount = 0 }) {
 
           {/* Icons */}
           <div className="flex items-center space-x-4">
-
-            {/* Search (Hide for admin) */}
-            {user?.role !== "admin" && (
-              <button className="text-gray-700 hover:text-pink-600 transition">
-                <Search size={22} />
-              </button>
-            )}
 
             {/* Wishlist (Customer Only) */}
             {user?.role !== "admin" && (

@@ -3,7 +3,9 @@ const router = express.Router();
 const Order = require('../models/order');
 const Cart = require('../models/cart');
 const Product = require('../models/product');
+const User = require('../models/user');
 const { protect } = require('../middleware/auth');
+const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } = require('../utils/emailService');
 
 // POST /orders - Create a new order
 router.post('/', protect, async (req, res) => {
@@ -52,6 +54,16 @@ router.post('/', protect, async (req, res) => {
 
     // Populate order details
     await order.populate('items.productId', 'name price category');
+
+    // Get user details for email
+    const user = await User.findById(req.user.id);
+
+    // Send order confirmation email
+    try {
+      await sendOrderConfirmationEmail(order, user);
+    } catch (emailError) {
+      console.error('Failed to send order confirmation email:', emailError);
+    }
 
     res.status(201).json(order);
   } catch (error) {
@@ -110,20 +122,34 @@ router.put('/:id', protect, async (req, res) => {
   try {
     const { status } = req.body;
 
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('userId', 'email firstName lastName');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
     // Check authorization (only admin or order owner)
-    if (order.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (order.userId._id.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Unauthorized' });
     }
+
+    const previousStatus = order.status;
 
     if (status) order.status = status;
 
     await order.save();
+
+    // Populate items for email
+    await order.populate('items.productId', 'name price category');
+
+    // Send status update email if status changed
+    if (previousStatus !== status) {
+      try {
+        await sendOrderStatusUpdateEmail(order, order.userId, previousStatus);
+      } catch (emailError) {
+        console.error('Failed to send order status update email:', emailError);
+      }
+    }
 
     res.json(order);
   } catch (error) {
@@ -135,14 +161,14 @@ router.put('/:id', protect, async (req, res) => {
 // DELETE /orders/:id - Cancel order
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('userId', 'email firstName lastName');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
     // Check if user owns this order
-    if (order.userId.toString() !== req.user.id) {
+    if (order.userId._id.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
@@ -161,6 +187,16 @@ router.delete('/:id', protect, async (req, res) => {
 
     order.status = 'cancelled';
     await order.save();
+
+    // Populate items for email
+    await order.populate('items.productId', 'name price category');
+
+    // Send cancellation email
+    try {
+      await sendOrderStatusUpdateEmail(order, order.userId, 'pending');
+    } catch (emailError) {
+      console.error('Failed to send order cancellation email:', emailError);
+    }
 
     res.json({ message: 'Order cancelled successfully', order });
   } catch (error) {
