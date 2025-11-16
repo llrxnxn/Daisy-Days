@@ -18,6 +18,7 @@ import {
 import Navbar from '../../components/layout/navbar';
 import Footer from '../../components/layout/footer';
 import ViewProductModal from './viewProduct';
+import Overview from './Overview';
 import api from '../../api/axios';
 
 // Bulk Delete Modal Component
@@ -385,55 +386,7 @@ export default function AdminDashboard() {
           <div className="md:col-span-3">
             {/* OVERVIEW */}
             {activeTab === "overview" && (
-              <div className="space-y-8">
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                 
-                  <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <div className="flex justify-between mb-4">
-                      <div className="bg-green-500 p-3 rounded-xl">
-                        <DollarSign className="text-white" />
-                      </div>
-                      <span className="text-green-600 text-sm font-semibold flex items-center gap-1">
-                        <TrendingUp size={16} /> +12%
-                      </span>
-                    </div>
-                    <div className="text-2xl font-bold">
-                      ₱{stats?.totalSales?.toLocaleString()}
-                    </div>
-                    <div className="text-gray-500 text-sm">Total Sales</div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <div className="flex justify-between mb-4">
-                      <div className="bg-blue-500 p-3 rounded-xl">
-                        <ShoppingBag className="text-white" />
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold">{stats.orders}</div>
-                    <div className="text-gray-500 text-sm">Orders</div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <div className="flex justify-between mb-4">
-                      <div className="bg-purple-500 p-3 rounded-xl">
-                        <Package className="text-white" />
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold">{stats.products}</div>
-                    <div className="text-gray-500 text-sm">Products</div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <div className="flex justify-between mb-4">
-                      <div className="bg-pink-500 p-3 rounded-xl">
-                        <Users className="text-white" />
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold">{stats.customers}</div>
-                    <div className="text-gray-500 text-sm">Customers</div>
-                  </div>
-                </div>
-              </div>
+              <Overview />
             )}
 
             {/* PRODUCTS */}
