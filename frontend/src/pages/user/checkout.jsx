@@ -24,10 +24,23 @@ export default function Checkout() {
 
   const [formErrors, setFormErrors] = useState({});
 
+  // ------------------------------------------------------
+  // ⭐ AUTO-FILL EMAIL FROM LOGGED-IN USER
+  // ------------------------------------------------------
   useEffect(() => {
-    fetchCart();
+    const savedUser = JSON.parse(localStorage.getItem("user"));
+
+    if (savedUser?.email) {
+      setFormData(prev => ({
+        ...prev,
+        email: savedUser.email
+      }));
+    }
+
+    fetchCart(); 
   }, []);
 
+  // ------------------------------------------------------
   const fetchCart = async () => {
     setLoading(true);
     try {
@@ -90,7 +103,7 @@ export default function Checkout() {
       ...prev,
       [name]: value
     }));
-    // Clear error for this field
+
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -111,7 +124,6 @@ export default function Checkout() {
     try {
       const token = localStorage.getItem('token');
 
-      // Create order
       const orderResponse = await api.post(
         '/orders',
         {
@@ -124,15 +136,12 @@ export default function Checkout() {
           })),
           totalAmount: calculateTotal()
         },
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
 
       setOrderId(orderResponse.data._id);
       setOrderPlaced(true);
 
-      // Clear cart after successful order
       setTimeout(() => {
         navigate('/shop');
       }, 3000);
@@ -145,6 +154,9 @@ export default function Checkout() {
     }
   };
 
+  // ------------------------------------------------------
+  // LOADING SCREEN
+  // ------------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -157,7 +169,9 @@ export default function Checkout() {
     );
   }
 
-  // Order placed success screen
+  // ------------------------------------------------------
+  // ORDER SUCCESS SCREEN
+  // ------------------------------------------------------
   if (orderPlaced) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -181,7 +195,7 @@ export default function Checkout() {
                 <div className="text-left">
                   <p className="font-semibold text-gray-900">Order Status: Pending</p>
                   <p className="text-sm text-gray-600 mt-1">
-                    Your order is being processed. You will receive a confirmation email shortly with tracking details.
+                    You will receive a confirmation email once your order is processed.
                   </p>
                 </div>
               </div>
@@ -201,11 +215,14 @@ export default function Checkout() {
     );
   }
 
+  // ------------------------------------------------------
+  // MAIN CHECKOUT UI
+  // ------------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar 
         cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} 
-        wishlistCount={0} 
+        wishlistCount={0}
       />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -225,7 +242,8 @@ export default function Checkout() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Shipping Address Form */}
+          
+          {/* SHIPPING FORM */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -234,48 +252,41 @@ export default function Checkout() {
               </h2>
 
               <form onSubmit={handlePlaceOrder} className="space-y-6">
-                {/* Name Fields */}
+
+                {/* NAME */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      First Name *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">First Name *</label>
                     <input
                       type="text"
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
                       placeholder="John"
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition ${
+                      className={`w-full px-4 py-3 border rounded-lg ${
                         formErrors.firstName ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    {formErrors.firstName && (
-                      <p className="text-red-600 text-sm mt-1">{formErrors.firstName}</p>
-                    )}
+                    {formErrors.firstName && <p className="text-red-600 text-sm">{formErrors.firstName}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Last Name *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Last Name *</label>
                     <input
                       type="text"
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
                       placeholder="Doe"
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition ${
+                      className={`w-full px-4 py-3 border rounded-lg ${
                         formErrors.lastName ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    {formErrors.lastName && (
-                      <p className="text-red-600 text-sm mt-1">{formErrors.lastName}</p>
-                    )}
+                    {formErrors.lastName && <p className="text-red-600 text-sm">{formErrors.lastName}</p>}
                   </div>
                 </div>
 
-                {/* Email and Phone */}
+                {/* EMAIL + PHONE */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
@@ -287,14 +298,12 @@ export default function Checkout() {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      placeholder="john@example.com"
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition ${
+                      placeholder="your@email.com"
+                      className={`w-full px-4 py-3 border rounded-lg ${
                         formErrors.email ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    {formErrors.email && (
-                      <p className="text-red-600 text-sm mt-1">{formErrors.email}</p>
-                    )}
+                    {formErrors.email && <p className="text-red-600 text-sm">{formErrors.email}</p>}
                   </div>
 
                   <div>
@@ -308,49 +317,44 @@ export default function Checkout() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="+63 9XX XXX XXXX"
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition ${
+                      className={`w-full px-4 py-3 border rounded-lg ${
                         formErrors.phone ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    {formErrors.phone && (
-                      <p className="text-red-600 text-sm mt-1">{formErrors.phone}</p>
-                    )}
+                    {formErrors.phone && <p className="text-red-600 text-sm">{formErrors.phone}</p>}
                   </div>
                 </div>
 
-                {/* Address */}
+                {/* ADDRESS */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Street Address *
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Street Address *</label>
                   <input
                     type="text"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="123 Main Street, Apt 4B"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition ${
+                    className={`w-full px-4 py-3 border rounded-lg ${
                       formErrors.address ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
-                  {formErrors.address && (
-                    <p className="text-red-600 text-sm mt-1">{formErrors.address}</p>
-                  )}
+                  {formErrors.address && <p className="text-red-600 text-sm">{formErrors.address}</p>}
                 </div>
 
-                {/* Submit Button */}
+                {/* SUBMIT BUTTON */}
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-4 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition font-semibold disabled:opacity-50"
                 >
                   {submitting ? 'Processing...' : 'Place Order'}
                 </button>
+
               </form>
             </div>
           </div>
 
-          {/* Order Summary Sidebar */}
+          {/* ORDER SUMMARY */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-8">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -358,15 +362,14 @@ export default function Checkout() {
                 Order Summary
               </h2>
 
-              {/* Items List */}
               <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
                 {cart.map((item) => (
-                  <div key={item._id} className="flex justify-between items-start gap-2 p-3 bg-gray-50 rounded-lg">
+                  <div key={item._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">{item.productId.name}</p>
-                      <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
+                      <p className="font-medium">{item.productId.name}</p>
+                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                     </div>
-                    <span className="font-semibold text-gray-900 text-sm">
+                    <span className="font-semibold">
                       ₱{(item.productId.price * item.quantity).toLocaleString()}
                     </span>
                   </div>
@@ -403,8 +406,10 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
+
         </div>
       </div>
 
