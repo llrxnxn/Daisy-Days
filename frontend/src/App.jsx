@@ -1,6 +1,7 @@
 // src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
 import Home from './pages/Home';
 import Shop from './pages/user/shop';
 import Login from './pages/Login';
@@ -15,8 +16,10 @@ import ViewProduct from './pages/user/viewProduct';
 import Products from './pages/admin/Products';
 import UpdateProduct from './pages/admin/updateProduct';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import ReviewPage from "./pages/user/ReviewPage";
+
 import { WishlistProvider } from './context/WishlistContext';
-import ReviewPage from "./pages/user/ReviewPage"; // make sure this import exists
+import ProtectedRoute from "./components/routes/ProtectedRoute";
 
 import './index.css';
 
@@ -26,21 +29,122 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
+
+            {/* PUBLIC ROUTES */}
             <Route path="/" element={<Home />} />
             <Route path="/Login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/wishlist" element={<Wishlist />} />
-            <Route path="/AdminDashboard" element={<AdminDashboard />} /> 
-            <Route path="/products" element={<Products />} />
-            <Route path="/products/edit/:id" element={<UpdateProduct />} />
-            <Route path="/product/:id" element={<ViewProduct />} />
-            <Route path="/review/:id" element={<ReviewPage />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/transactions" element={<TransactionHistory />} />
+
+            {/* CUSTOMER PROTECTED ROUTES */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/shop"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Shop />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/wishlist"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Wishlist />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/product/:id"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <ViewProduct />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/review/:id"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <ReviewPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/cart"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Cart />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Checkout />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Orders />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <TransactionHistory />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ADMIN PROTECTED ROUTES */}
+            <Route
+              path="/AdminDashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/products"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <Products />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/products/edit/:id"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <UpdateProduct />
+                </ProtectedRoute>
+              }
+            />
+
           </Routes>
         </div>
       </Router>
