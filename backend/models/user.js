@@ -3,80 +3,99 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+  // For Google login
+  firebaseUid: {
+    type: String,
+    default: null,
+  },
+
+  // For Google OR manual signup
   firstName: {
     type: String,
-    required: [true, 'Please provide first name'],
-    trim: true
+    trim: true,
+    default: null
   },
   lastName: {
     type: String,
-    required: [true, 'Please provide last name'],
-    trim: true
+    trim: true,
+    default: null
   },
+
+  name: {
+    type: String,
+    default: null // For Google (displayName)
+  },
+
   email: {
     type: String,
-    required: [true, 'Please provide email'],
+    required: true,
     unique: true,
-    lowercase: true,
-    match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-      'Please provide a valid email'
-    ]
+    lowercase: true
   },
+
   phone: {
     type: String,
-    required: [true, 'Please provide phone number']
+    default: null
   },
+
+  // Only for email/password login — NOT required for Google
   password: {
     type: String,
-    required: [true, 'Please provide password'],
     minlength: 6,
-    select: false // Don't return password by default
+    select: false,
+    default: null
   },
+
   profileImage: {
     type: String,
-    default: null // Cloudinary URL
+    default: null
   },
+  
   cloudinaryId: {
     type: String,
-    default: null // For deleting old images
+    default: null
   },
+
   role: {
     type: String,
     enum: ['customer', 'admin'],
     default: 'customer'
   },
+
   isActive: {
     type: Boolean,
     default: true
   },
+
   createdAt: {
     type: Date,
     default: Date.now
   },
+
   updatedAt: {
     type: Date,
     default: Date.now
   }
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  // Update timestamp
+
+// 🔐 Hash password only if it exists
+userSchema.pre('save', async function (next) {
   this.updatedAt = Date.now();
-  
-  // Only hash if password is modified
-  if (!this.isModified('password')) {
-    next();
+
+  if (!this.isModified('password') || !this.password) {
+    return next();
   }
 
-  // Generate salt and hash password
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
-// Method to compare password
-userSchema.methods.comparePassword = async function(enteredPassword) {
+
+// Compare password for login
+userSchema.methods.comparePassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

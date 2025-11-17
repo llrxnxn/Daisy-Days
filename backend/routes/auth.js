@@ -144,6 +144,75 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/google-login
+// @desc    Google Login (Firebase)
+// @access  Public
+router.post("/google-login", async (req, res) => {
+  try {
+    const { firebaseUid, name, email, photo } = req.body;
+
+    if (!firebaseUid || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
+      });
+    }
+
+    // Check if user exists by email
+    let user = await User.findOne({ email });
+
+    // CREATE USER IF NOT EXIST
+    if (!user) {
+      user = await User.create({
+        firebaseUid,
+        firstName: name?.split(" ")[0] || "",
+        lastName: name?.split(" ")[1] || "",
+        email,
+        profileImage: photo,
+        role: "customer",
+        password: null, // Google accounts have no password
+      });
+    }
+
+    // Check if account is deactivated
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "Your account has been deactivated"
+      });
+    }
+
+    // Generate JWT
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
+
+    // Return same format as normal login
+    return res.status(200).json({
+      success: true,
+      message: "Google login successful",
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profileImage: user.profileImage,
+      },
+    });
+
+  } catch (err) {
+    console.error("Google Login Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error during Google login",
+      error: err.message,
+    });
+  }
+});
+
 // @route   GET /api/auth/me
 // @desc    Get current logged in user
 // @access  Private

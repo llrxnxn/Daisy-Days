@@ -1,89 +1,142 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
+import axios from "axios";
 
-// Yup Validation Schema
-const loginSchema = yup.object({
-  email: yup
-    .string()
-    .email('Email is invalid')
-    .required('Email is required'),
-  password: yup
-    .string()
-    .min(6, 'Password must be at least 6 characters')
-    .required('Password is required')
-});
+// FIREBASE
+import { auth, googleProvider } from '../firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 export default function Login() {
-  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState({});
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset
-  } = useForm({
-    resolver: yupResolver(loginSchema),
-    mode: 'onChange'
-  });
+  /* ============================================================
+     ✅ GOOGLE LOGIN (UPDATED WITH AXIOS + BACKEND)
+  ============================================================ */
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
 
-  const onSubmit = async (data) => {
+      const googleData = {
+        firebaseUid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL,
+      };
+
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/google-login",
+        googleData
+      );
+
+      const data = response.data;
+
+      // Save session
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect
+      if (data.user.role === "admin") {
+    window.location.href = "/AdminDashboard";
+      } else {
+          window.location.href = "/";
+      }
+
+
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      setGeneralError(
+        error.response?.data?.message || "Google login failed. Please try again."
+      );
+    }
+  };
+
+  /* ------------------------ VALIDATION ------------------------ */
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    return newErrors;
+  };
+
+  /* -------------------------- LOGIN SUBMIT -------------------------- */
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setGeneralError('');
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/login",
+        formData
+      );
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (response.ok) {
-        // Save token to localStorage
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('user', JSON.stringify(result.user));
+      // Save session
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
 
-        // Success message
-        alert('Login successful! 🌸');
-
-        // Redirect based on user role
-        if (result.user.role === 'admin') {
-          navigate('/AdminDashboard');
-        } else {
-          navigate('/');
-        }
+      if (result.user.role === "admin") {
+        window.location.href = "/AdminDashboard";
       } else {
-        setGeneralError(result.message || 'Login failed');
+        window.location.href = "/";
       }
+
     } catch (error) {
-      console.error('Login error:', error);
-      setGeneralError('Network error. Please try again.');
+      console.error("Login error:", error);
+      setGeneralError(
+        error.response?.data?.message || "Network error. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  /* -------------------------- UI -------------------------- */
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-      {/* Back to Home Button */}
-      <Link
-        to="/"
+
+      {/* Back to Home */}
+      <button
+        onClick={() => window.location.href = '/'}
         className="absolute top-8 left-8 flex items-center gap-2 text-gray-600 hover:text-pink-600 transition"
       >
         <ArrowLeft size={20} />
         <span>Back to Home</span>
-      </Link>
+      </button>
 
       <div className="max-w-md w-full">
-        {/* Logo Section */}
+
+        {/* Logo + Heading */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <span className="text-5xl">🌼</span>
@@ -93,52 +146,51 @@ export default function Login() {
           <p className="text-gray-600">Login to your account</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white rounded-3xl shadow-2xl p-8">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* General Error Message */}
+          <div className="space-y-6">
+
             {generalError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                 {generalError}
               </div>
             )}
 
-            {/* Email Input */}
+            {/* Email */}
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Email Address
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="text-gray-400" size={20} />
                 </div>
                 <input
                   type="email"
+                  name="email"
                   placeholder="you@example.com"
-                  {...register('email')}
+                  value={formData.email}
+                  onChange={handleChange}
                   className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                     errors.email ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
               </div>
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
               )}
             </div>
 
-            {/* Password Input */}
+            {/* Password */}
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Password
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="text-gray-400" size={20} />
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
+                  name="password"
                   placeholder="Enter your password"
-                  {...register('password')}
+                  value={formData.password}
+                  onChange={handleChange}
                   className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none focus:border-pink-500 transition ${
                     errors.password ? 'border-red-500' : 'border-gray-200'
                   }`}
@@ -152,31 +204,17 @@ export default function Login() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
               )}
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
-                />
-                <span className="ml-2 text-sm text-gray-600">Remember me</span>
-              </label>
-              <a href="#" className="text-sm text-pink-600 hover:text-pink-700 font-semibold">
-                Forgot Password?
-              </a>
             </div>
 
             {/* Login Button */}
             <button
-              type="submit"
+              onClick={onSubmit}
               disabled={isLoading}
               className="w-full bg-pink-600 text-white py-3 rounded-xl font-semibold hover:bg-pink-700 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? "Logging in..." : "Login"}
             </button>
 
             {/* Divider */}
@@ -189,32 +227,24 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Social Login Buttons */}
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition"
-              >
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                <span className="font-semibold text-gray-700">Google</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition"
-              >
-                <img src="https://www.facebook.com/favicon.ico" alt="Facebook" className="w-5 h-5" />
-                <span className="font-semibold text-gray-700">Facebook</span>
-              </button>
-            </div>
+            {/* GOOGLE LOGIN */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="cursor-pointer z-50 w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all"
+            >
+              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+              <span className="font-semibold text-gray-700">Continue with Google</span>
+            </button>
 
-            {/* Sign Up Link */}
             <div className="text-center">
               <span className="text-gray-600">Don't have an account? </span>
-              <Link to="/register" className="text-pink-600 font-semibold hover:text-pink-700">
+              <a href="/register" className="text-pink-600 font-semibold hover:text-pink-700">
                 Sign up
-              </Link>
+              </a>
             </div>
-          </form>
+
+          </div>
         </div>
       </div>
     </div>
