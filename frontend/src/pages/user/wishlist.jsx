@@ -15,55 +15,56 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Divider,
+  Rating,
 } from '@mui/material';
-import { ShoppingCart, Trash2, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Trash2 } from 'lucide-react';
 import { styled } from '@mui/material/styles';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'all 0.3s ease',
   '&:hover': {
-    transform: 'translateY(-8px)',
-    boxShadow: theme.shadows[12],
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
   },
-  borderRadius: theme.spacing(1.5),
+  borderRadius: '12px',
+  overflow: 'hidden',
 }));
 
 const StyledCardMedia = styled(CardMedia)(({ theme }) => ({
   height: 280,
   position: 'relative',
-  overflow: 'hidden',
-  backgroundColor: theme.palette.grey[200],
-  '&:hover img': {
-    transform: 'scale(1.08)',
-  },
-  '& img': {
-    transition: 'transform 0.4s ease-in-out',
-  },
+  backgroundColor: theme.palette.grey[100],
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
 }));
 
-const PriceTypography = styled(Typography)(({ theme }) => ({
-  fontSize: '1.75rem',
-  fontWeight: 700,
-  color: '#ff6b6b',
-  marginTop: theme.spacing(1),
-  marginBottom: theme.spacing(2),
-}));
+const BadgeContainer = styled(Box)({
+  position: 'absolute',
+  top: 12,
+  left: 12,
+  zIndex: 10,
+});
 
-const EmptyWishlistContainer = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(6),
-  textAlign: 'center',
-  borderRadius: theme.spacing(2),
-  background: `linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)`,
-  minHeight: '500px',
+const WishlistBadge = styled(Box)({
+  position: 'absolute',
+  top: 12,
+  right: 12,
+  width: 40,
+  height: 40,
+  borderRadius: '50%',
+  backgroundColor: 'white',
   display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
   alignItems: 'center',
-}));
+  justifyContent: 'center',
+  cursor: 'pointer',
+  zIndex: 10,
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+  '&:hover': {
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  },
+});
 
 const WishlistPage = () => {
   const { wishlist, loading, removeFromWishlist } = useWishlist();
@@ -102,7 +103,20 @@ const WishlistPage = () => {
   if (wishlist.length === 0) {
     return (
       <Container maxWidth="lg" sx={{ py: 6 }}>
-        <EmptyWishlistContainer elevation={0}>
+        <Paper
+          sx={{
+            padding: 6,
+            textAlign: 'center',
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            minHeight: '500px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          elevation={0}
+        >
           <Heart size={80} style={{ color: '#ff6b6b', marginBottom: 24, opacity: 0.8 }} />
           <Typography variant="h4" component="h2" sx={{ fontWeight: 700, mb: 1, color: '#333' }}>
             Your Wishlist is Empty
@@ -121,14 +135,11 @@ const WishlistPage = () => {
               fontSize: '1rem',
               textTransform: 'none',
               borderRadius: '8px',
-              '&:hover': {
-                boxShadow: '0 8px 16px rgba(255, 107, 107, 0.3)',
-              },
             }}
           >
             Continue Shopping
           </Button>
-        </EmptyWishlistContainer>
+        </Paper>
       </Container>
     );
   }
@@ -165,10 +176,6 @@ const WishlistPage = () => {
             textTransform: 'none',
             borderRadius: '6px',
             padding: '8px 24px',
-            '&:hover': {
-              borderColor: '#ff5252',
-              backgroundColor: 'rgba(255, 107, 107, 0.08)',
-            },
           }}
         >
           Back to Shop
@@ -187,44 +194,71 @@ const WishlistPage = () => {
 
       <Grid container spacing={3}>
         {wishlist.map(item => (
-          <Grid item xs={12} sm={6} md={4} key={item._id}>
+          <Grid key={item._id} sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' } }}>
             <StyledCard>
-              <StyledCardMedia
-                image={item.productId?.images?.[0]?.url || '/placeholder.jpg'}
-                title={item.productId?.name}
-              />
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Chip
-                  label={item.productId?.category}
-                  size="small"
-                  sx={{
-                    mb: 1,
-                    background: 'linear-gradient(45deg, #ff6b6b 30%, #ff8787 90%)',
-                    color: 'white',
-                    fontWeight: 600,
-                    height: 28,
-                  }}
+              <Box sx={{ position: 'relative' }}>
+                <StyledCardMedia
+                  image={item.productId?.images?.[0]?.url || '/placeholder.jpg'}
+                  title={item.productId?.name}
                 />
+                <BadgeContainer>
+                  <Chip
+                    label="In Stock"
+                    sx={{
+                      background: '#e8f5e9',
+                      color: '#2e7d32',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                    }}
+                  />
+                </BadgeContainer>
+                <WishlistBadge onClick={() => removeFromWishlist(item._id)}>
+                  <Heart size={20} fill="#ff6b6b" color="#ff6b6b" />
+                </WishlistBadge>
+              </Box>
+
+              <CardContent sx={{ flexGrow: 1, pb: 1.5 }}>
                 <Typography
-                  gutterBottom
+                  variant="caption"
+                  sx={{
+                    color: '#fff',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    display: 'inline-block',
+                    background: '#ff6b6b',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    mb: 1.5,
+                  }}
+                >
+                  {item.productId?.category}
+                </Typography>
+
+                <Typography
                   variant="h6"
-                  component="div"
                   sx={{
                     fontWeight: 700,
                     color: '#333',
+                    fontSize: '1.05rem',
+                    mb: 1,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    lineHeight: 1.3,
                   }}
                 >
                   {item.productId?.name}
                 </Typography>
+
                 <Typography
                   variant="body2"
                   sx={{
                     color: '#666',
+                    fontSize: '0.88rem',
                     lineHeight: 1.5,
-                    mb: 2,
+                    mb: 1.5,
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
@@ -233,23 +267,32 @@ const WishlistPage = () => {
                 >
                   {item.productId?.description}
                 </Typography>
-                <PriceTypography>
-                  ${item.productId?.price}
-                </PriceTypography>
+
+                <Typography
+                  sx={{
+                    fontSize: '1.75rem',
+                    fontWeight: 700,
+                    color: '#ff6b6b',
+                  }}
+                >
+                  ₱{item.productId?.price}
+                </Typography>
               </CardContent>
-              <Divider />
-              <CardActions sx={{ gap: 1, pt: 2, pb: 2 }}>
+
+              <CardActions sx={{ p: 2, pt: 1, gap: 1 }}>
                 <Button
                   fullWidth
                   variant="contained"
                   sx={{
-                    background: 'linear-gradient(45deg, #ff6b6b 30%, #ff8787 90%)',
+                    background: '#ff6b6b',
                     color: 'white',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     textTransform: 'none',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
+                    py: 1.3,
+                    fontSize: '0.95rem',
                     '&:hover': {
-                      boxShadow: '0 6px 12px rgba(255, 107, 107, 0.3)',
+                      background: '#ff5252',
                     },
                     '&:disabled': {
                       opacity: 0.6,
@@ -257,7 +300,7 @@ const WishlistPage = () => {
                   }}
                   onClick={() => handleAddToCart(item.productId?._id)}
                   disabled={addingToCart[item.productId?._id]}
-                  startIcon={addingToCart[item.productId?._id] ? <CircularProgress size={20} color="inherit" /> : <ShoppingCart size={20} />}
+                  startIcon={addingToCart[item.productId?._id] ? <CircularProgress size={18} color="inherit" /> : <ShoppingCart size={18} />}
                 >
                   {addingToCart[item.productId?._id] ? 'Adding...' : 'Add to Cart'}
                 </Button>
@@ -266,10 +309,9 @@ const WishlistPage = () => {
                   sx={{
                     color: '#ff6b6b',
                     borderColor: '#ff6b6b',
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     minWidth: '44px',
+                    p: 1.3,
                     '&:hover': {
                       borderColor: '#ff5252',
                       backgroundColor: 'rgba(255, 107, 107, 0.08)',
@@ -278,7 +320,7 @@ const WishlistPage = () => {
                   onClick={() => removeFromWishlist(item._id)}
                   title="Remove from wishlist"
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={18} />
                 </Button>
               </CardActions>
             </StyledCard>
