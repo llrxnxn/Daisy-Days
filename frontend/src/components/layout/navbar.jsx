@@ -70,9 +70,6 @@ export default function Navbar({ cartCount = 0, wishlistCount = 0 }) {
                 <button onClick={() => navigate("/shop")} className="text-gray-700 hover:text-pink-600 transition">
                   Shop
                 </button>
-                {/* <button onClick={() => navigate("/categories")} className="text-gray-700 hover:text-pink-600 transition">
-                  Categories
-                </button> */}
               </>
             )}
           </div>
