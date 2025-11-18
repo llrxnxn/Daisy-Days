@@ -108,57 +108,60 @@ export default function Shop() {
   };
 
   const filterAndSortProducts = () => {
-    let filtered = [...products];
+  let filtered = [...products];
 
-    if (searchQuery) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (selectedCategories.length > 0) {
-      filtered = filtered.filter(product => 
-        selectedCategories.includes(product.category)
-      );
-    }
-
-    filtered = filtered.filter(product => 
-      product.price >= priceRange[0] && product.price <= priceRange[1]
+  if (searchQuery) {
+    filtered = filtered.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
+  }
 
-    if (selectedRatings.length > 0) {
-      const minRating = Math.min(...selectedRatings);
-      filtered = filtered.filter(product => {
-        const rating = product.rating || 0;
-        return rating >= minRating;
-      });
-    }
+  if (selectedCategories.length > 0) {
+    filtered = filtered.filter(product => 
+      selectedCategories.includes(product.category)
+    );
+  }
 
-    switch (sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'name-asc':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'name-desc':
-        filtered.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case 'rating':
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        break;
-      case 'newest':
-      default:
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-    }
+  filtered = filtered.filter(product => 
+    product.price >= priceRange[0] && product.price <= priceRange[1]
+  );
 
-    setFilteredProducts(filtered);
-  };
+  // FIX: Updated rating filter logic - exact match only
+  if (selectedRatings.length > 0) {
+    filtered = filtered.filter(product => {
+      const rating = product.rating || 0;
+      const flooredRating = Math.floor(rating);
+      
+      // Check if the product's floored rating exactly matches any selected rating
+      return selectedRatings.includes(flooredRating);
+    });
+  }
+
+  switch (sortBy) {
+    case 'price-low':
+      filtered.sort((a, b) => a.price - b.price);
+      break;
+    case 'price-high':
+      filtered.sort((a, b) => b.price - a.price);
+      break;
+    case 'name-asc':
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case 'name-desc':
+      filtered.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    case 'rating':
+      filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      break;
+    case 'newest':
+    default:
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      break;
+  }
+
+  setFilteredProducts(filtered);
+};
 
   const toggleCategory = (category) => {
     setSelectedCategories(prev => 
