@@ -60,6 +60,50 @@ export default function TransactionHistory() {
       console.error('Error checking review status:', error);
     }
   };
+const handleCancelOrder = async (orderId) => {
+  if (!window.confirm('Are you sure you want to cancel this order? You will receive a refund.')) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please log in to cancel orders');
+      return;
+    }
+
+    console.log('Attempting to cancel order:', orderId);
+    console.log('Token exists:', !!token);
+
+    // Call DELETE endpoint to cancel the order
+    const response = await api.delete(`/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    console.log('Cancel response:', response);
+
+    // Update the local orders state
+    setOrders(orders.map(order =>
+      order._id === orderId
+        ? { ...order, status: 'cancelled', updatedAt: new Date() }
+        : order
+    ));
+
+    setExpandedOrder(null);
+    alert('Order cancelled successfully. Your refund will be processed shortly.');
+
+  } catch (error) {
+    console.error('Full error object:', error);
+    console.error('Error response data:', error.response?.data);
+    console.error('Error response status:', error.response?.status);
+    console.error('Error message:', error.message);
+    console.error('Error config:', error.config);
+    
+    // Show detailed error message
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to cancel order';
+    alert(`Error: ${errorMessage}`);
+  }
+};
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -499,7 +543,7 @@ export default function TransactionHistory() {
                         Buy Again
                       </button>
                       {['pending', 'confirmed'].includes(order.status) && (
-                        <button className="flex-1 min-w-40 py-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition font-semibold">
+                        <button onClick={() => handleCancelOrder(order._id)} className="flex-1 min-w-40 py-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition font-semibold">
                           Cancel Order
                         </button>
                       )}
