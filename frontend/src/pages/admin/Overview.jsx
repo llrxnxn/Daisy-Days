@@ -189,10 +189,10 @@ export default function Overview() {
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px'
                 }}
-                formatter={(value) => `$${value.toFixed(2)}`}
+                formatter={(value) => `₱${value.toFixed(2)}`}
               />
               <Legend />
-              <Bar dataKey="sales" fill="#EC4899" name="Sales ($)" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="sales" fill="#EC4899" name="Sales (₱)" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

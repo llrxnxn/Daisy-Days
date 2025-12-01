@@ -2,6 +2,14 @@ const transporter = require('../config/email');
 const PDFDocument = require('pdfkit');
 const { Readable } = require('stream');
 
+// Helper function to format peso
+const formatPesoManual = (amount) => {
+  return '₱' + parseFloat(amount).toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 // Generate order email HTML
 const generateOrderEmailHTML = (order, user) => {
   const itemsHTML = order.items
@@ -10,8 +18,8 @@ const generateOrderEmailHTML = (order, user) => {
     <tr>
       <td style="border: 1px solid #ddd; padding: 12px;">${item.productId?.name || 'Product'}</td>
       <td style="border: 1px solid #ddd; padding: 12px; text-align: center;">${item.quantity}</td>
-      <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">₱${item.price.toFixed(2)}</td>
-      <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">₱${(item.price * item.quantity).toFixed(2)}</td>
+      <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${formatPesoManual(item.price)}</td>
+      <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${formatPesoManual(item.price * item.quantity)}</td>
     </tr>
   `
     )
@@ -218,15 +226,15 @@ const generateOrderEmailHTML = (order, user) => {
                 <div class="totals">
                     <div class="total-row subtotal">
                         <span>Subtotal:</span>
-                        <span>₱${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</span>
+                        <span>${formatPesoManual(order.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}</span>
                     </div>
                     <div class="total-row shipping">
                         <span>Shipping:</span>
-                        <span>${order.totalAmount > 1000 ? 'FREE' : '₱150.00'}</span>
+                        <span>${order.totalAmount > 1000 ? 'FREE' : formatPesoManual(150)}</span>
                     </div>
                     <div class="total-row grand-total">
                         <span>Grand Total:</span>
-                        <span>₱${order.totalAmount.toFixed(2)}</span>
+                        <span>${formatPesoManual(order.totalAmount)}</span>
                     </div>
                 </div>
                 
@@ -367,7 +375,7 @@ const generatePDFReceipt = async (order, user) => {
     doc.fontSize(9).font('Helvetica').fillColor(textColor);
 
     order.items.forEach((item, index) => {
-      const itemTotal = (item.price * item.quantity).toFixed(2);
+      const itemTotal = item.price * item.quantity;
 
       // Alternate row background
       if (index % 2 === 0) {
@@ -376,8 +384,8 @@ const generatePDFReceipt = async (order, user) => {
 
       doc.text(item.productId?.name || 'Product', 60, tableY, { width: 250 });
       doc.text(item.quantity.toString(), 320, tableY, { width: 50, align: 'center' });
-      doc.text(`₱${item.price.toFixed(2)}`, 380, tableY, { width: 70, align: 'right' });
-      doc.text(`₱${itemTotal}`, 460, tableY, { width: 75, align: 'right' });
+      doc.text(formatPesoManual(item.price), 380, tableY, { width: 70, align: 'right' });
+      doc.text(formatPesoManual(itemTotal), 460, tableY, { width: 75, align: 'right' });
 
       tableY += 25;
     });
@@ -392,11 +400,11 @@ const generatePDFReceipt = async (order, user) => {
 
     doc.fontSize(9).font('Helvetica').fillColor(darkGray);
     doc.text('Subtotal:', 380, tableY, { width: 70, align: 'right' });
-    doc.fillColor(textColor).text(`₱${subtotal.toFixed(2)}`, 460, tableY, { width: 75, align: 'right' });
+    doc.fillColor(textColor).text(formatPesoManual(subtotal), 460, tableY, { width: 75, align: 'right' });
 
     tableY += 20;
     doc.fillColor(darkGray).text('Shipping:', 380, tableY, { width: 70, align: 'right' });
-    doc.fillColor(textColor).text(shipping === 0 ? 'FREE' : `₱${shipping.toFixed(2)}`, 460, tableY, { width: 75, align: 'right' });
+    doc.fillColor(textColor).text(shipping === 0 ? 'FREE' : formatPesoManual(shipping), 460, tableY, { width: 75, align: 'right' });
 
     tableY += 25;
     doc.moveTo(380, tableY - 10).lineTo(545, tableY - 10).stroke(primaryColor);
@@ -405,7 +413,7 @@ const generatePDFReceipt = async (order, user) => {
     doc.fillColor(textColor).fontSize(12).font('Helvetica-Bold');
     doc.text('TOTAL:', 380, tableY, { width: 70, align: 'right' });
     doc.fontSize(14).fillColor(primaryColor);
-    doc.text(`₱${order.totalAmount.toFixed(2)}`, 460, tableY - 2, { width: 75, align: 'right' });
+    doc.text(formatPesoManual(order.totalAmount), 460, tableY - 2, { width: 75, align: 'right' });
 
     // Footer
     doc.moveDown(3);
@@ -434,7 +442,7 @@ const sendOrderConfirmationEmail = async (order, user) => {
     const pdfBuffer = await generatePDFReceipt(order, user);
 
     const mailOptions = {
-      from: '"Daisy Days" <orders@daisydays.com>',
+      from: '"Daisy Days" <daisydays@email.com>',
       to: user.email || order.shippingAddress?.email,
       subject: `Order Confirmed - #${order._id}`,
       html: generateOrderEmailHTML(order, user),
